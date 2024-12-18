@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Racing Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #game-title {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: yellow;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 600px;
+            background: #333;
+            overflow: hidden;
+            border: 5px solid #fff;
+            border-bottom: 10px solid #fff;
+        }
+        .player {
+            position: absolute;
+            bottom: 20px;
+            left: 180px;
+            width: 40px;
+            height: 60px;
+            background: blue;
+        }
+        .obstacle {
+            position: absolute;
+            width: 40px;
+            height: 60px;
+            background: #f00;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+        }
+        #controls h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+        }
+        #controls ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #controls li {
+            font-size: 14px;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+        }
+        #pause-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+        /* Start and End Screens */
+        #start-screen, #end-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+            z-index: 10;
+        }
+        #start-button, #restart-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            background: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-title">Avoid the Enemy Blocks</div>
+    <div id="game-container">
+        <div class="player" id="player"></div>
+        <div id="start-screen">
+            <h1>Welcome to Avoid the Enemy Blocks</h1>
+            <p>Use Arrow Keys to Move and Avoid Enemy Blocks!</p>
+            <button id="start-button">Start Game</button>
+        </div>
+        <div id="end-screen" style="display: none;">
+            <h1>Game Over!</h1>
+            <p>Your Score: <span id="final-score">0</span></p>
+            <button id="restart-button">Restart</button>
+        </div>
+    </div>
+    <div id="controls">
+        <h3>Controls:</h3>
+        <ul>
+            <li><strong>Arrow Left:</strong> Move left</li>
+            <li><strong>Arrow Right:</strong> Move right</li>
+            <li><strong>P:</strong> Pause/Resume</li>
+        </ul>
+    </div>
+    <div id="score">Score: 0</div>
+    <button id="pause-button">Pause</button>
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const pauseButton = document.getElementById('pause-button');
+        const startScreen = document.getElementById('start-screen');
+        const endScreen = document.getElementById('end-screen');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const finalScore = document.getElementById('final-score');
+
+        const gameWidth = 400;
+        const playerWidth = 40;
+        const playerHeight = 60;
+        let playerPosition = 180;
+        let speed = 5;
+        let score = 0;
+        let obstacleCreationInterval;
+        let obstacles = [];
+        let gamePaused = false;
+        let gameStarted = false;
+
+        function movePlayer(direction) {
+            if (direction === 'left' && playerPosition > 0) {
+                playerPosition -= 20;
+            } else if (direction === 'right' && playerPosition < gameWidth - playerWidth) {
+                playerPosition += 20;
+            }
+            player.style.left = `${playerPosition}px`;
+        }
+
+        function togglePause() {
+            if (!gameStarted) return;
+            gamePaused = !gamePaused;
+            pauseButton.textContent = gamePaused ? 'Resume' : 'Pause';
+        }
+
+        function startGame() {
+            gameStarted = true;
+            startScreen.style.display = 'none';
+            gameLoop();
+        }
+
+        function endGame() {
+            gameStarted = false;
+            clearInterval(obstacleCreationInterval);
+            clearAllObstacles();
+            finalScore.textContent = score;
+            endScreen.style.display = 'flex';
+        }
+
+        function restartGame() {
+            location.reload();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') movePlayer('left');
+            else if (e.key === 'ArrowRight') movePlayer('right');
+            else if (e.key.toLowerCase() === 'p') togglePause();
+        });
+
+        pauseButton.addEventListener('click', togglePause);
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', restartGame);
+
+        function createObstacle() {
+            if (gamePaused || !gameStarted) return;
+
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            // Spawn obstacles closer to player's position with slight randomness
+            const offset = Math.random() * 40 - 20; 
+            const spawnPosition = Math.max(0, Math.min(playerPosition + offset, gameWidth - playerWidth));
+            obstacle.style.left = `${spawnPosition}px`;
+            obstacle.style.top = '0px';
+            gameContainer.appendChild(obstacle);
+            obstacles.push(obstacle);
+
+            let obstacleInterval = setInterval(() => {
+                if (gamePaused || !gameStarted) return;
+
+                let obstacleTop = parseInt(obstacle.style.top);
+                obstacle.style.top = `${obstacleTop + speed}px`;
+
+                if (obstacleTop > 600) {
+                    obstacle.remove();
+                    obstacles = obstacles.filter(o => o !== obstacle);
+                    clearInterval(obstacleInterval);
+                    score++;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                }
+
+                if (checkCollision(obstacle)) {
+                    clearInterval(obstacleInterval);
+                    endGame();
+                }
+            }, 30);
+        }
+
+        function clearAllObstacles() {
+            obstacles.forEach(obstacle => obstacle.remove());
+            obstacles = [];
+        }
+
+        function checkCollision(obstacle) {
+            const obstacleRect = obstacle.getBoundingClientRect();
+            const playerRect = player.getBoundingClientRect();
+            return (
+                obstacleRect.left < playerRect.right &&
+                obstacleRect.right > playerRect.left &&
+                obstacleRect.top < playerRect.bottom &&
+                obstacleRect.bottom > playerRect.top
+            );
+        }
+
+        function gameLoop() {
+            obstacleCreationInterval = setInterval(() => {
+                createObstacle();
+                speed += 0.1;
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
